@@ -24,15 +24,9 @@ import (
 func RestBranchList(w http.ResponseWriter, r *http.Request) {
 	bs := restful.BranchList{}
 	symbol.GetServer().WalkBuilders(func(bu symbol.Builder) error {
-		if b, ok := bu.(*symbol.Branch); ok {
+		if b, ok := bu.(*symbol.BrBuilder); ok {
 			bs.Total++
-			bs.Branchs = append(bs.Branchs, &symbol.Branch{
-				BuildName:  b.BuildName,
-				StoreName:  b.StoreName,
-				BuildPath:  b.BuildPath,
-				StorePath:  b.StorePath,
-				CreateTime: b.CreateTime,
-			})
+			bs.Branchs = append(bs.Branchs, &b.Branch)
 		}
 		return nil
 	})

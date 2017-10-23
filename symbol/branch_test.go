@@ -39,7 +39,7 @@ func TestParseBuilds(t *testing.T) {
 }
 
 func TestAddBuild(t *testing.T) {
-	builder := NewBranch("UDP_6_5_U2", "UDPV6.5U2")
+	builder := NewBranch("UDP_6_5_U2", "UDPv6.5U2")
 	if err := builder.Init(); err != nil {
 		t.Fatal(err)
 	}
@@ -55,11 +55,10 @@ func TestAddBuild(t *testing.T) {
 		idx++
 		return nil
 	})
-	fmt.Printf("Branch %s build %s has %d symbols.\n", builder.Name(), lastBuild, total)
-
 	if err != nil {
 		t.Error(err)
 	}
+	fmt.Printf("Branch %s build %s has %d symbols.\n", builder.Name(), lastBuild, total)
 }
 
 func TestEncodeDecode(t *testing.T) {
@@ -103,9 +102,13 @@ func TestScanBuilders(t *testing.T) {
 					fmt.Printf("Exist branch %+v.\n", b)
 				case ErrBranchNotInit:
 					fmt.Printf("New branch %+v.\n", b)
+					if _, err = b.ParseBuilds(nil); err != nil {
+						t.Fatal(err)
+					}
 					if err = b.Persist(); err != nil {
 						t.Error(err)
 					}
+					fmt.Printf("Branch %s, Latest: %s.\n", b.Name(), b.LatestBuild)
 				default:
 					fmt.Printf("Invalid branch %+v.\n", b)
 				}

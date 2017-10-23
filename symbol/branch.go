@@ -37,19 +37,14 @@ var (
 	ErrBranchOnBuildServer = fmt.Errorf("invalid branch on build server")
 )
 
-// Branch represent pdb release
+// BrBuilder represent pdb release
 //
-type Branch struct {
-	BuildName   string             // branch name in buid server
-	StoreName   string             // branch name in symbol store
-	BuildPath   string             // root path of current branch on build server
-	StorePath   string             // root path of current branch on symbol store
-	CreateTime  time.Time          // branch create time
-	latestBuild string             // latest build no. in local
-	symPath     string             // path that unzip debug.zip to
-	builds      map[string]*Build  // save all builds for current branch
-	symbols     map[string]*Symbol // save
-	mx          sync.RWMutex
+type BrBuilder struct {
+	Branch
+	symPath string             // path that unzip debug.zip to
+	builds  map[string]*Build  // save all builds for current branch
+	symbols map[string]*Symbol // save
+	mx      sync.RWMutex
 }
 
 func init() {
@@ -59,25 +54,28 @@ func init() {
 	})
 }
 
-// NewBranch create an new `Branch`, `Init` must be called after `NewBranch`.
+// NewBranch create an new `BrBuilder`, `Init` must be called after `NewBranch`.
 //
-func NewBranch(buildName, storeName string) *Branch {
-	return &Branch{
-		BuildName:  buildName,
-		StoreName:  storeName,
-		CreateTime: time.Now(),
-		builds:     make(map[string]*Build, 1),
+func NewBranch(buildName, storeName string) *BrBuilder {
+	return &BrBuilder{
+		Branch: Branch{
+			BuildName:  buildName,
+			StoreName:  storeName,
+			CreateDate: time.Now().Format("2006-01-02 15:04:05"),
+		},
+		builds:  make(map[string]*Build, 1),
+		symbols: make(map[string]*Symbol, 1),
 	}
 }
 
 // Name return name in symbol store
 //
-func (b *Branch) Name() string {
+func (b *BrBuilder) Name() string {
 	return b.StoreName
 }
 
 // CanBrowse check if current branch is valid on local symbol store.
-func (b *Branch) CanBrowse() bool {
+func (b *BrBuilder) CanBrowse() bool {
 	fpath := filepath.Join(b.StorePath, adminDir)
 	if st, _ := os.Stat(fpath); st != nil && st.IsDir() {
 		return true
@@ -86,7 +84,7 @@ func (b *Branch) CanBrowse() bool {
 }
 
 // CanUpdate check if current branch is valid on build server.
-func (b *Branch) CanUpdate() bool {
+func (b *BrBuilder) CanUpdate() bool {
 	fpath := filepath.Join(b.BuildPath, config.LatestBuildFile)
 	if st, _ := os.Stat(fpath); st != nil && !st.IsDir() {
 		return true
@@ -94,13 +92,11 @@ func (b *Branch) CanUpdate() bool {
 	return false
 }
 
-// Init current branch, failed if it is not valid
+// Init current branch, load `branch.bin` from `000Admin` folder
 //
-func (b *Branch) Init() error {
+func (b *BrBuilder) Init() error {
 	// default path
-	b.BuildPath = filepath.Join(config.BuildSource, b.BuildName, "Release")
 	b.StorePath = filepath.Join(config.Destination, b.StoreName)
-
 	fpath := filepath.Join(b.StorePath, adminDir)
 	if st, _ := os.Stat(fpath); st != nil && st.IsDir() {
 		if err := b.Load(); err != nil {
@@ -116,7 +112,7 @@ func (b *Branch) Init() error {
 // `buildserver` is the subpath relative to config.BuildSource.
 // `localstore` is the subpath relative to config.Destination.
 //
-func (b *Branch) SetSubpath(buildserver, localstore string) error {
+func (b *BrBuilder) SetSubpath(buildserver, localstore string) error {
 	lpath := filepath.Join(config.Destination, b.StoreName)
 	fpath := filepath.Join(config.BuildSource, b.BuildName, "Release")
 
@@ -128,24 +124,25 @@ func (b *Branch) SetSubpath(buildserver, localstore string) error {
 		log.Error(2, "[Branch] Init sympol store path %s failed: %v.", lpath, err)
 		return err
 	}
+	b.StorePath = lpath
 
 	if buildserver != "" {
 		// by given subpath
 		fpath = filepath.Join(config.BuildSource, buildserver)
 	}
+	b.BuildPath = fpath
+
+	// check if can be update from server
 	if _, err := os.Stat(fpath); os.IsNotExist(err) {
 		log.Error(2, "[Branch] Invalid path %s for %s.", fpath, b.Name())
 		return fmt.Errorf("invalid path on build server")
 	}
-
-	b.StorePath = lpath
-	b.BuildPath = fpath
 	return b.Persist()
 }
 
 // Persist will save branch information into 000Admin/branch.bin
 //
-func (b *Branch) Persist() error {
+func (b *BrBuilder) Persist() error {
 	fpath := filepath.Join(b.StorePath, adminDir, branchBin)
 	fd, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 666)
 	if err != nil {
@@ -154,12 +151,22 @@ func (b *Branch) Persist() error {
 	}
 
 	defer fd.Close()
-	return gob.NewEncoder(fd).Encode(b)
+	log.Trace("[Branch] Save branch %+v.", b.Branch)
+	return gob.NewEncoder(fd).Encode(&b.Branch)
+}
+
+// Delete current branch
+//
+func (b *BrBuilder) Delete() error {
+	log.Info("[Branch] Delete branch %+v.", b.Branch)
+	fpath := filepath.Join(b.StorePath, adminDir, branchBin)
+	err := os.Remove(fpath)
+	return err
 }
 
 // Load will load branch information from 000Admin/branch.bin
 //
-func (b *Branch) Load() error {
+func (b *BrBuilder) Load() error {
 	fpath := filepath.Join(b.StorePath, adminDir, branchBin)
 	fd, err := os.OpenFile(fpath, os.O_RDONLY, 666)
 	if err != nil {
@@ -168,12 +175,12 @@ func (b *Branch) Load() error {
 	}
 
 	defer fd.Close()
-	return gob.NewDecoder(fd).Decode(b)
+	return gob.NewDecoder(fd).Decode(&b.Branch)
 }
 
 // getSymbols copy pdb zip file to local temp path and return the path
 //
-func (b *Branch) getSymbols(buildver string) (string, error) {
+func (b *BrBuilder) getSymbols(buildver string) (string, error) {
 	var (
 		fs    *os.File
 		fd    *os.File
@@ -212,7 +219,7 @@ func (b *Branch) getSymbols(buildver string) (string, error) {
 
 // getLatestBuild return latest build no. on build server
 //
-func (b *Branch) getLatestBuild(local bool) (string, error) {
+func (b *BrBuilder) getLatestBuild(local bool) (string, error) {
 	fpath := ""
 	if local {
 		fpath = filepath.Join(b.StorePath, adminDir, config.LatestBuildFile)
@@ -234,7 +241,7 @@ func (b *Branch) getLatestBuild(local bool) (string, error) {
 
 // GetLatestID return the last symbol build id
 //
-func (b *Branch) GetLatestID() string {
+func (b *BrBuilder) GetLatestID() string {
 	fpath := filepath.Join(b.StorePath, adminDir, lastidTxt)
 	fd, err := os.OpenFile(fpath, os.O_RDONLY, 666)
 	if err != nil {
@@ -251,7 +258,7 @@ func (b *Branch) GetLatestID() string {
 
 // updateLatestBuild update local latest build file
 //
-func (b *Branch) updateLatestBuild(latest string) error {
+func (b *BrBuilder) updateLatestBuild(latest string) error {
 	fpath := filepath.Join(b.StorePath, adminDir, config.LatestBuildFile)
 	fd, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 666)
 	if err != nil {
@@ -269,7 +276,7 @@ func (b *Branch) updateLatestBuild(latest string) error {
 
 // addSymStore call symstore.exe to add symbols to symbol store.
 //
-func (b *Branch) addSymStore(latestbuild, symbols string) (*Build, error) {
+func (b *BrBuilder) addSymStore(latestbuild, symbols string) (*Build, error) {
 	start := time.Now()
 	comment := start.Format("2006-01-02_15:04:05")
 	log.Info("[Branch] Call symbol store command for build %s ...", latestbuild)
@@ -320,7 +327,7 @@ func (b *Branch) addSymStore(latestbuild, symbols string) (*Build, error) {
 	return build, nil
 }
 
-func (b *Branch) getBuild(version string, id string) *Build {
+func (b *BrBuilder) getBuild(version string, id string) *Build {
 	b.mx.RLock()
 	defer b.mx.RUnlock()
 	if version != "" {
@@ -338,7 +345,7 @@ func (b *Branch) getBuild(version string, id string) *Build {
 	return nil
 }
 
-func (b *Branch) addBuild(build *Build) {
+func (b *BrBuilder) addBuild(build *Build) {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 	b.builds[build.ID] = build
@@ -346,7 +353,7 @@ func (b *Branch) addBuild(build *Build) {
 
 // Add new version of pdb
 //
-func (b *Branch) Add(buildVerion string) error {
+func (b *BrBuilder) AddBuild(buildVerion string) error {
 	latest := buildVerion
 	local, err := b.getLatestBuild(true)
 
@@ -393,16 +400,16 @@ func (b *Branch) Add(buildVerion string) error {
 	}
 
 	b.addBuild(build)
-	b.latestBuild = latest
+	b.LatestBuild = latest
 	return nil
 }
 
 // ParseBuilds parse server.txt to get pdb history
 //
-func (b *Branch) ParseBuilds(handler func(b *Build) error) (int, error) {
+func (b *BrBuilder) ParseBuilds(handler func(b *Build) error) (int, error) {
 	if handler == nil {
-		handler = func(ver *Build) error {
-			fmt.Println(ver)
+		handler = func(bd *Build) error {
+			//fmt.Println(bd)
 			return nil
 		}
 	}
@@ -458,11 +465,14 @@ func (b *Branch) ParseBuilds(handler func(b *Build) error) (int, error) {
 			Version: strings.Trim(ss[6], "\""),
 			Comment: strings.Trim(ss[7], "\""),
 		}
+
+		total++
+		b.addBuild(build)
+		b.LatestBuild = build.Version
+
 		if err = handler(build); err != nil {
 			return total, err
 		}
-		total++
-		b.addBuild(build)
 	}
 
 	return total, nil
@@ -470,7 +480,7 @@ func (b *Branch) ParseBuilds(handler func(b *Build) error) (int, error) {
 
 // ParseSymbols parse 000000001(*) from pdb path
 //
-func (b *Branch) ParseSymbols(buildID string, handler func(sym *Symbol) error) (int, error) {
+func (b *BrBuilder) ParseSymbols(buildID string, handler func(sym *Symbol) error) (int, error) {
 	build := b.getBuild("", buildID)
 	if build == nil {
 		log.Error(2, "[Branch] Build %s not exist for %s.", buildID, b.Name())
@@ -487,7 +497,7 @@ func (b *Branch) ParseSymbols(buildID string, handler func(sym *Symbol) error) (
 
 	if handler == nil {
 		handler = func(sym *Symbol) error {
-			fmt.Println(sym)
+			//fmt.Println(sym)
 			return nil
 		}
 	}
@@ -566,6 +576,6 @@ func (b *Branch) ParseSymbols(buildID string, handler func(sym *Symbol) error) (
 
 // GetSymbolPath return symbol's full path
 //
-func (b *Branch) GetSymbolPath(hash, name string) string {
+func (b *BrBuilder) GetSymbolPath(hash, name string) string {
 	return filepath.Join(b.StorePath, name, hash, name)
 }

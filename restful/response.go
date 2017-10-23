@@ -36,19 +36,19 @@ type ErrCodeMsg struct {
 // BranchList return branch list of current symbol store
 //
 type BranchList struct {
-	Total   int
-	Branchs []*symbol.Branch
+	Total   int              `json:"total"`
+	Branchs []*symbol.Branch `json:"branchs"`
 }
 type BuildList struct {
-	Branch string
-	Total  int
-	Builds []*symbol.Build
+	Branch string          `json:"branchName"`
+	Total  int             `json:"total"`
+	Builds []*symbol.Build `json:"builds"`
 }
 type SymbolList struct {
-	Branch  string
-	Build   string
-	Total   int
-	Symbols []*symbol.Symbol
+	Branch  string           `json:"branchName"`
+	Build   string           `json:"buildID"`
+	Total   int              `json:"total"`
+	Symbols []*symbol.Symbol `json:"symbols"`
 }
 
 // RestResponse is the basic struct used to wrap data back to client in json format.
