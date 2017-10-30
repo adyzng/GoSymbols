@@ -1,9 +1,10 @@
-package main
+package route
 
 import (
 	"net/http"
 
-	"github.com/adyzng/goPDB/restful/v1"
+	"github.com/adyzng/GoSymbols/config"
+	"github.com/adyzng/GoSymbols/restful/v1"
 	"github.com/gorilla/mux"
 )
 
@@ -26,26 +27,44 @@ var routes = []Route{
 	{
 		Name:    "RestBranchList",
 		Method:  []string{"GET"},
-		Pattern: "/api/v1/branch",
+		Pattern: "/api/branchs",
 		Handler: v1.RestBranchList,
 	},
 	{
 		Name:    "RestBuildList",
 		Method:  []string{"GET"},
-		Pattern: "/api/v1/branch/{name}",
+		Pattern: "/api/branchs/{name}",
 		Handler: v1.RestBuildList,
 	},
 	{
 		Name:    "RestSymbolList",
 		Method:  []string{"GET"},
-		Pattern: "/api/v1/branch/{name}/{bid}",
+		Pattern: "/api/branchs/{name}/{bid}",
 		Handler: v1.RestSymbolList,
 	},
 	{
 		Name:    "DownloadSymbol",
 		Method:  []string{"GET"},
-		Pattern: "/api/v1/symbol/{name}/{hash}",
+		Pattern: "/api/symbol/{branch}/{hash}/{name}",
 		Handler: v1.DownloadSymbol,
+	},
+	{
+		Name:    "ModifyBranch",
+		Method:  []string{"POST"},
+		Pattern: "/api/branch",
+		Handler: v1.ModifyBranch,
+	},
+	{
+		Name:    "ValidateBranch",
+		Method:  []string{"POST"},
+		Pattern: "/api/branch/check",
+		Handler: v1.ValidateBranch,
+	},
+	{
+		Name:    "DeleteBranch",
+		Method:  []string{"DELETE"},
+		Pattern: "/api/branch/{name}",
+		Handler: v1.DeleteBranch,
 	},
 }
 
@@ -57,8 +76,8 @@ func NewRouter() *mux.Router {
 
 	// static files handler
 	router.
-		PathPrefix("/public/").
-		Handler(http.StripPrefix("/public/", StaticHandler("./public/")))
+		PathPrefix("/assets/").
+		Handler(http.StripPrefix("/assets/", StaticHandler(config.Public)))
 
 	// predefined handler
 	for _, route := range routes {

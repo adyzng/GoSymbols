@@ -17,8 +17,12 @@ var (
 	AppPath   string
 	AppName   string
 	IsWindows bool
-	Address   string
 
+	Public  string // website assets folder
+	Address string // website listen address
+	Port    uint   // website listen port
+
+	LogPath         string
 	SymStoreExe     string
 	Destination     string // pdb server destination
 	BuildSource     string // pdb source folder
@@ -39,6 +43,7 @@ func exePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Abs(file)
 }
 
@@ -54,11 +59,9 @@ func LoadConfig(files ...interface{}) error {
 		return err
 	}
 
-	AppName = "goPDBSvr"
-	AppPath, _ = exePath()
+	AppName = "GoSymbols"
+	AppPath, _ = os.Getwd() //exePath()
 	IsWindows = runtime.GOOS == "windows"
-
-	cur, _ := os.Getwd()
 	log.Info("[Config] App path %s.", AppPath)
 
 	cfg, err := ini.LoadSources(ini.LoadOptions{
@@ -67,10 +70,11 @@ func LoadConfig(files ...interface{}) error {
 		Loose:            true,
 	},
 		file,
-		files...)
+		files...,
+	)
 
 	if err != nil {
-		log.Fatal(2, "[Config] load config failed : %v. ", err, cur)
+		log.Fatal(2, "[Config] load config failed : %v.", err)
 		return err
 	}
 
@@ -106,9 +110,9 @@ func LoadConfig(files ...interface{}) error {
 		log.Fatal(2, "[Config] BUILD_SOURCE is missing.")
 	}
 
-	ScheduleTime = base.Key("TRIGGER_TIME").String()
-	if ScheduleTime == "" {
-		ScheduleTime = "05:00"
+	LogPath = base.Key("LOG_PATH").String()
+	if LogPath == "" {
+		LogPath = "logs"
 	}
 
 	symSec := cfg.Section("symbol")
@@ -118,9 +122,14 @@ func LoadConfig(files ...interface{}) error {
 	}
 
 	web := cfg.Section("web")
-	Address = web.Key("LISTEN_ADDR").String()
-	if Address == "" {
-		Address = ":8080"
+	Address = web.Key("ADDRESS").String()
+	Public = web.Key("PUBLIC_FOLDER").String()
+	if Public == "" {
+		Public = "./public/"
+	}
+	Port, _ = web.Key("PORT").Uint()
+	if Port == 0 {
+		Port = 8080
 	}
 
 	return nil

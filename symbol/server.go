@@ -1,84 +1,134 @@
 package symbol
 
 import (
+	"encoding/json"
 	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/adyzng/goPDB/config"
+	"github.com/adyzng/GoSymbols/config"
 	log "gopkg.in/clog.v1"
 )
 
 var (
-	symSvr = &sserver{}
+	symSvr *sserver
 	once   sync.Once
+)
+
+const (
+	symConfig = "symbols.json"
 )
 
 // sserver ...
 //
 type sserver struct {
 	lck      sync.RWMutex
-	builders []Builder
+	builders map[string]Builder
 }
 
 // GetServer return single instance of sserver
 //
 func GetServer() *sserver {
+	once.Do(func() {
+		symSvr = &sserver{
+			builders: make(map[string]Builder, 1),
+		}
+	})
 	return symSvr
 }
 
-// GetBuilder reture given build if not exist, return nil
-//
-func (ss *sserver) GetBuilder(storeName string) Builder {
-	ss.lck.RLock()
-	defer ss.lck.RUnlock()
-
-	for _, v := range ss.builders {
-		if v.Name() == storeName {
-			return v
-		}
-	}
-	return nil
-}
-
-// AddBuilder if already exist, do nothing.
-//
-func (ss *sserver) AddBuilder(buildName, storeName string) Builder {
-	if b := ss.GetBuilder(storeName); b != nil {
-		return b
+// Scan exist symbol store
+func (ss *sserver) ScanStore(path string) error {
+	fs, err := ioutil.ReadDir(path)
+	if err != nil {
+		log.Error(2, "[SS] Enum symbol store %s failed: %v.", path, err)
+		return err
 	}
 
-	branch := NewBranch(buildName, storeName)
-	ss.lck.Lock()
-	defer ss.lck.Unlock()
-
-	ss.builders = append(ss.builders, branch)
-	return branch
-}
-
-// Delete builder
-//
-func (ss *sserver) DeleteBuilder(storeName string) Builder {
-	ss.lck.Lock()
-	defer ss.lck.Unlock()
-
-	for i, b := range ss.builders {
-		if b.Name() == storeName {
-			if i == len(ss.builders)-1 {
-				ss.builders = ss.builders[:i]
-			} else {
-				bs := ss.builders[:]
-				ss.builders = append(bs[:i], bs[i+1:]...)
+	func() {
+		ss.lck.Lock()
+		defer ss.lck.Unlock()
+		for _, f := range fs {
+			if !f.IsDir() {
+				continue
 			}
-			b.Delete()
+			b := NewBranch(f.Name(), f.Name())
+			if b.CanBrowse() || b.CanUpdate() {
+				ss.builders[strings.ToLower(f.Name())] = b
+				log.Info("[SS] Load branch %s.", b.Name())
+			}
+		}
+	}()
+	return ss.SaveBranchs("")
+}
+
+// Modify branch
+func (ss *sserver) Modify(branch *Branch) Builder {
+	ss.lck.Lock()
+	defer ss.lck.Unlock()
+
+	lower := strings.ToLower(branch.StoreName)
+	if b, ok := ss.builders[lower]; ok {
+		nb := NewBranch2(branch)
+		if nb.CanUpdate() || nb.CanBrowse() {
+			ob, _ := b.(*BrBuilder)
+			ob.BuildName = nb.BuildName
+			ob.StoreName = nb.StoreName
+			ob.BuildPath = nb.BuildPath
+			ob.StorePath = nb.StorePath
 			return b
 		}
 	}
 	return nil
 }
 
+// Get reture given branch,  if not exist return nil
+func (ss *sserver) Get(storeName string) Builder {
+	ss.lck.RLock()
+	defer ss.lck.RUnlock()
+
+	lower := strings.ToLower(storeName)
+	b, _ := ss.builders[lower]
+	return b
+}
+
+// AddBranch if already exist, do nothing.
+func (ss *sserver) Add(buildName, storeName string) Builder {
+	ss.lck.Lock()
+	defer ss.lck.Unlock()
+
+	// exist one
+	if b, ok := ss.builders[storeName]; ok {
+		return b
+	}
+
+	// new one
+	b := NewBranch(buildName, storeName)
+	if b.CanBrowse() || b.CanUpdate() {
+		ss.builders[strings.ToLower(storeName)] = b
+		return b
+	}
+
+	return nil
+}
+
+// DeleteBranch remove given branch
+func (ss *sserver) Delete(storeName string) Builder {
+	ss.lck.Lock()
+	defer ss.lck.Unlock()
+
+	lower := strings.ToLower(storeName)
+	if b, ok := ss.builders[lower]; ok {
+		delete(ss.builders, lower)
+		return b
+	}
+	return nil
+}
+
 // WalkBuilders walk all exist builders, the handler should be return asap.
-//
 func (ss *sserver) WalkBuilders(handler func(branch Builder) error) error {
 	var err error
 	if handler == nil {
@@ -95,32 +145,61 @@ func (ss *sserver) WalkBuilders(handler func(branch Builder) error) error {
 	return err
 }
 
-// LoadBuilder scan local symbol store for exist branchs.
-//
-func (ss *sserver) LoadBuilders() error {
-	root := config.Destination
-	fi, err := ioutil.ReadDir(root)
+// LoadBranchs scan local symbol store for exist branchs.
+func (ss *sserver) LoadBranchs() error {
+	fpath := filepath.Join(config.AppPath, symConfig)
+	fd, err := os.OpenFile(fpath, os.O_RDONLY, 666)
 	if err != nil {
-		log.Error(2, "[SS] Enum symbol store %s failed: %v.", root, err)
+		log.Error(2, "[SS] Read symbols config file %s failed: %v.", fpath, err)
 		return err
 	}
-	for _, f := range fi {
-		if f.IsDir() {
-			b := ss.AddBuilder(f.Name(), f.Name())
-			if b != nil {
-				if err := b.Init(); err != nil {
-					log.Warn("[SS] Failed to load branch %s: %v.", b.Name(), err)
-				} else {
-					log.Info("[SS] Load branch %s.", b.Name())
-				}
-			}
-		}
+
+	var arr []*Branch
+	dec := json.NewDecoder(fd)
+	if err := dec.Decode(&arr); err != nil {
+		return err
+	}
+
+	ss.lck.Lock()
+	defer ss.lck.Unlock()
+
+	for _, b := range arr {
+		ss.builders[strings.ToLower(b.StoreName)] = NewBranch2(b)
 	}
 	return nil
 }
 
+// SaveBranchs ...
+func (ss *sserver) SaveBranchs(path string) error {
+	if path == "" {
+		path = config.AppPath
+	}
+
+	fpath := filepath.Join(path, symConfig)
+	fd, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 666)
+	if err != nil {
+		log.Error(2, "[SS] Open file %s failed: %v.", fpath, err)
+		return err
+	}
+
+	ss.lck.Lock()
+	defer func() {
+		fd.Close()
+		ss.lck.Unlock()
+	}()
+
+	arr := make([]*Branch, 0, len(ss.builders))
+	for _, b := range ss.builders {
+		br := b.(*BrBuilder)
+		arr = append(arr, &br.Branch)
+	}
+
+	enc := json.NewEncoder(fd)
+	enc.SetIndent("", "\t")
+	return enc.Encode(arr)
+}
+
 // Run ...
-//
 func (ss *sserver) Run(done <-chan struct{}) {
 	var wg sync.WaitGroup
 	log.Info("[SS] Symbol server start ...")
@@ -128,7 +207,11 @@ func (ss *sserver) Run(done <-chan struct{}) {
 	ticker := time.NewTicker(time.Hour * 2)
 	defer ticker.Stop()
 
-	ss.LoadBuilders()
+	if err := ss.LoadBranchs(); err != nil {
+		log.Error(2, "[SS] Load branchs failed: %v.", err)
+		return
+	}
+
 	ss.WalkBuilders(func(bu Builder) error {
 		wg.Add(1)
 		log.Info("[SS] Parse branch %s.", bu.Name())
@@ -156,6 +239,10 @@ LOOP:
 			return nil
 		})
 
+		if err := ss.SaveBranchs(""); err != nil {
+			log.Error(2, "[SS] Save branchs list failed: %v.", err)
+		}
+
 		select {
 		case <-done:
 			log.Warn("[SS] Receive stop signal.")
@@ -165,12 +252,9 @@ LOOP:
 			break
 		}
 	}
-	ss.WalkBuilders(func(bu Builder) error {
-		if err := bu.Persist(); err != nil {
-			log.Error(2, "[SS] Save branch failed %v.", err)
-		}
-		return nil
-	})
+	if err := ss.SaveBranchs(""); err != nil {
+		log.Error(2, "[SS] Save branchs list failed: %v.", err)
+	}
 
 	wg.Wait()
 	log.Info("[SS] Symbol server stop.")

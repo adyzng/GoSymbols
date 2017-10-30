@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/adyzng/goPDB/symbol"
+	"github.com/adyzng/GoSymbols/symbol"
 
 	log "gopkg.in/clog.v1"
 )
@@ -24,6 +24,11 @@ var (
 	ErrSucceed      = ErrCodeMsg{0, "ok"}
 	ErrInvalidParam = ErrCodeMsg{100, "invalid parameter"}
 	ErrServerInner  = ErrCodeMsg{101, "server inner error"}
+
+	ErrInvalidBranch = ErrCodeMsg{200, "branch unavailable"}
+	ErrExistOnLocal  = ErrCodeMsg{201, "branch exist in symbol store"}
+	ErrUnknownBranch = ErrCodeMsg{202, "unknown branch"}
+	ErrUnauthorized  = ErrCodeMsg{203, "unauthorized operation"}
 )
 
 // ErrCodeMsg is predefined error code and error message

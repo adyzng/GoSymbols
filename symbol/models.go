@@ -7,8 +7,9 @@ type Branch struct {
 	StoreName   string `json:"storeName"`
 	BuildPath   string `json:"buildPath"`
 	StorePath   string `json:"storePath"`
-	CreateDate  string `json:"createDate"`
+	UpdateDate  string `json:"updateDate"`
 	LatestBuild string `json:"latestBuild"`
+	BuildsCount int    `json:"buildsCount"`
 }
 
 // Build ... analyze from server.txt
@@ -36,12 +37,7 @@ type Symbol struct {
 type Builder interface {
 	// Name return builder name
 	Name() string
-	// Init builder
-	Init() error
-	// Delete current branch
-	Delete() error
-	// Persist builder information
-	Persist() error
+
 	// CanUpdate check if current branch is valid on build server.
 	CanUpdate() bool
 	// CanBrowse check if current branch is valid on local symbol store.

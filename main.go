@@ -1,26 +1,28 @@
 package main
 
 import (
-	"context"
-	"net/http"
+	"fmt"
 	"os"
-	"os/signal"
-	"sync"
-	"time"
+	"path/filepath"
 
-	"github.com/adyzng/goPDB/config"
-	"github.com/adyzng/goPDB/symbol"
+	"github.com/adyzng/GoSymbols/cmd"
+	"github.com/adyzng/GoSymbols/config"
+	"github.com/urfave/cli"
 
 	log "gopkg.in/clog.v1"
 )
 
 func init() {
+	fpath, _ := filepath.Abs(config.LogPath)
+	if err := os.MkdirAll(filepath.Dir(fpath), 666); err != nil {
+		fmt.Printf("[App] Create log folder failed: %v.", err)
+	}
+
 	log.New(log.FILE, log.FileConfig{
 		Level:      log.INFO,
-		Filename:   "log/gPDB.log",
+		Filename:   filepath.Join(fpath, "app.log"),
 		BufferSize: 2048,
 		FileRotationConfig: log.FileRotationConfig{
-			Daily:   true,
 			Rotate:  true,
 			MaxDays: 30,
 			MaxSize: 50 * (1 << 20),
@@ -28,43 +30,21 @@ func init() {
 	})
 }
 
-func main() {
-	log.Info("[App] Start %s ...", config.AppName)
+const APP_VER = "0.0.0.1"
 
-	done := make(chan struct{}, 1)
-	serv := http.Server{
-		Addr:         config.Address,
-		Handler:      NewRouter(),
-		ReadTimeout:  time.Second * 15,
-		WriteTimeout: time.Second * 15,
+func main() {
+	app := cli.NewApp()
+	app.Name = config.AppName
+	app.Usage = "A self-service symbol store"
+	app.Version = APP_VER
+	app.Commands = []cli.Command{
+		cmd.Web,
+		cmd.Admin,
+		cmd.AddBuild,
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(3)
+	app.Flags = append(app.Flags, []cli.Flag{}...)
+	app.Run(os.Args)
 
-	go func() {
-		log.Info("[App] Listening %s", serv.Addr)
-		serv.ListenAndServe()
-		wg.Done()
-	}()
-	go func() {
-		symbol.GetServer().Run(done)
-		wg.Done()
-	}()
-	go func() {
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, os.Interrupt, os.Kill)
-
-		<-sigs
-		close(done)
-		close(sigs)
-		log.Info("[App] Receive terminate signal!")
-
-		serv.Shutdown(context.Background())
-		wg.Done()
-	}()
-
-	wg.Wait()
-	log.Info("[App] Stop %s.", config.AppName)
 	log.Shutdown()
 }
