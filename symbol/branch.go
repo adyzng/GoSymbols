@@ -56,7 +56,7 @@ func init() {
 
 // NewBranch create an new `BrBuilder`, `Init` must be called after `NewBranch`.
 //
-func NewBranch(buildName, storeName string) *BrBuilder {
+func NewBranch(buildName, storeName string) Builder {
 	return NewBranch2(&Branch{
 		BuildName:  buildName,
 		StoreName:  storeName,
@@ -65,7 +65,7 @@ func NewBranch(buildName, storeName string) *BrBuilder {
 }
 
 // NewBranch2 ...
-func NewBranch2(branch *Branch) *BrBuilder {
+func NewBranch2(branch *Branch) Builder {
 	b := &BrBuilder{
 		Branch:  *branch,
 		builds:  make(map[string]*Build, 1),
@@ -84,6 +84,12 @@ func NewBranch2(branch *Branch) *BrBuilder {
 //
 func (b *BrBuilder) Name() string {
 	return b.StoreName
+}
+
+// GetBranch get branch information
+//
+func (b *BrBuilder) GetBranch() *Branch {
+	return &b.Branch
 }
 
 // CanBrowse check if current branch is valid on local symbol store.

@@ -55,6 +55,12 @@ type SymbolList struct {
 	Total   int              `json:"total"`
 	Symbols []*symbol.Symbol `json:"symbols"`
 }
+type Message struct {
+	Status int    `json:"status,omitempty"`
+	Branch string `json:"branch,omitempty"`
+	Build  string `json:"build,omitempty"`
+	Date   string `json:"date,omitempty"`
+}
 
 // RestResponse is the basic struct used to wrap data back to client in json format.
 //

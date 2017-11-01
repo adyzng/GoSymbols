@@ -1,5 +1,6 @@
 *.db
 *.log
+symbols.json
 log/
 custom/
 data/

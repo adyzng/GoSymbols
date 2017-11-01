@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/adyzng/GoSymbols/restful"
 	"github.com/adyzng/GoSymbols/symbol"
@@ -236,7 +238,9 @@ func ModifyBranch(w http.ResponseWriter, r *http.Request) {
 		resp.WriteJSON(w)
 		return
 	}
-
+	if err := ss.SaveBranchs(""); err != nil {
+		log.Warn("[Restful] Save branch (%v) failed: %v.", branch, err)
+	}
 	resp.WriteJSON(w)
 }
 
@@ -263,4 +267,36 @@ func DeleteBranch(w http.ResponseWriter, r *http.Request) {
 		resp.ErrCodeMsg = restful.ErrUnauthorized
 		w.WriteHeader(http.StatusUnauthorized) // not allow for now
 	}
+}
+
+// FetchTodayMsg get today symbols update information
+//	[:]/api/v1/messages [GET]
+//
+//	@ return {
+//		RestResponse
+//	}
+//
+func FetchTodayMsg(w http.ResponseWriter, r *http.Request) {
+	resp := restful.RestResponse{}
+	msgs := make([]*restful.Message, 0, 5)
+	today := time.Now().Format("2006-01-02")
+
+	symbol.GetServer().WalkBuilders(func(builder symbol.Builder) error {
+		if b := builder.GetBranch(); b != nil {
+			if strings.Index(b.UpdateDate, today) == 0 {
+				msg := &restful.Message{
+					Status: 1, // succeed
+					Branch: b.StoreName,
+					Build:  b.LatestBuild,
+					Date:   b.UpdateDate,
+				}
+				msgs = append(msgs, msg)
+			}
+		}
+		return nil
+	})
+
+	resp.Data = msgs
+	resp.ErrCodeMsg = restful.ErrSucceed
+	resp.WriteJSON(w)
 }

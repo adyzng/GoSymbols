@@ -37,6 +37,8 @@ type Symbol struct {
 type Builder interface {
 	// Name return builder name
 	Name() string
+	// Get struct *Branch {}
+	GetBranch() *Branch
 
 	// CanUpdate check if current branch is valid on build server.
 	CanUpdate() bool

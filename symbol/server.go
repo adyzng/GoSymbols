@@ -74,11 +74,14 @@ func (ss *sserver) Modify(branch *Branch) Builder {
 	if b, ok := ss.builders[lower]; ok {
 		nb := NewBranch2(branch)
 		if nb.CanUpdate() || nb.CanBrowse() {
-			ob, _ := b.(*BrBuilder)
-			ob.BuildName = nb.BuildName
-			ob.StoreName = nb.StoreName
-			ob.BuildPath = nb.BuildPath
-			ob.StorePath = nb.StorePath
+			bb := b.GetBranch()
+			*bb = *nb.GetBranch()
+			/*
+				ob.BuildName = nb.BuildName
+				ob.StoreName = nb.StoreName
+				ob.BuildPath = nb.BuildPath
+				ob.StorePath = nb.StorePath
+			*/
 			return b
 		}
 	}
@@ -190,8 +193,7 @@ func (ss *sserver) SaveBranchs(path string) error {
 
 	arr := make([]*Branch, 0, len(ss.builders))
 	for _, b := range ss.builders {
-		br := b.(*BrBuilder)
-		arr = append(arr, &br.Branch)
+		arr = append(arr, b.GetBranch())
 	}
 
 	enc := json.NewEncoder(fd)

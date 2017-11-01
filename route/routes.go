@@ -11,7 +11,7 @@ import (
 // Route define the basic route
 //
 type Route struct {
-	Name    string
+	Name    string 
 	Method  []string
 	Pattern string
 	Handler http.HandlerFunc
@@ -65,6 +65,12 @@ var routes = []Route{
 		Method:  []string{"DELETE"},
 		Pattern: "/api/branch/{name}",
 		Handler: v1.DeleteBranch,
+	},
+	{
+		Name:    "FetchTodayMessage",
+		Method:  []string{"GET"},
+		Pattern: "/api/messages",
+		Handler: v1.FetchTodayMsg,
 	},
 }
 
