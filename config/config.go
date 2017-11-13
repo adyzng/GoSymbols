@@ -18,9 +18,15 @@ var (
 	AppName   string
 	IsWindows bool
 
-	Public  string // website assets folder
+	WebRoot string // website assets folder
 	Address string // website listen address
 	Port    uint   // website listen port
+
+	ClientID    string //
+	ClientKey   string //
+	ADAuthURI   string
+	RedirectURI string
+	GraphScope  string
 
 	LogPath         string
 	SymStoreExe     string
@@ -109,23 +115,26 @@ func LoadConfig(files ...interface{}) error {
 		fmt.Println("[Config] BUILD_SOURCE is missing.")
 		log.Fatal(2, "[Config] BUILD_SOURCE is missing.")
 	}
-
 	LogPath = base.Key("LOG_PATH").String()
 	if LogPath == "" {
 		LogPath = "logs"
 	}
-
-	symSec := cfg.Section("symbol")
-	SymExcludeList = symSec.Key("EXCLUDE_LIST").Strings(",")
+	SymExcludeList = base.Key("EXCLUDE_LIST").Strings(",")
 	for index, v := range SymExcludeList {
 		SymExcludeList[index] = strings.ToLower(v)
 	}
 
+	appSec := cfg.Section("app")
+	ClientID = appSec.Key("CLIENT_ID").String()
+	ClientKey = appSec.Key("CLIENT_KEY").String()
+	GraphScope = appSec.Key("GRAPH_SCOPE").String()
+	RedirectURI = appSec.Key("REDIRECT_URI").String()
+
 	web := cfg.Section("web")
 	Address = web.Key("ADDRESS").String()
-	Public = web.Key("PUBLIC_FOLDER").String()
-	if Public == "" {
-		Public = "./public/"
+	WebRoot = web.Key("WEB_ROOT").String()
+	if WebRoot == "" {
+		WebRoot = "."
 	}
 	Port, _ = web.Key("PORT").Uint()
 	if Port == 0 {

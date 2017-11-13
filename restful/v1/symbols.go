@@ -17,7 +17,7 @@ import (
 )
 
 // RestBranchList response to restful API
-//	[:]/api/v1/branch  [GET]
+//	[:]/api/branches  [GET]
 //
 //	@ return {
 //		Total: 		int
@@ -41,7 +41,7 @@ func RestBranchList(w http.ResponseWriter, r *http.Request) {
 }
 
 // RestBuildList response to restful API
-//	[:]/api/v1/branch/:name  [GET]
+//	[:]/api/branches/{name}  [GET]
 //
 //	@:name {branch name}
 //
@@ -80,7 +80,7 @@ func RestBuildList(w http.ResponseWriter, r *http.Request) {
 }
 
 // RestSymbolList response to restful API
-//	[:]/api/v1/branch/:name/:bid  [GET]
+//	[:]/api/branches/:name/:bid  [GET]
 //
 //	@:name {branch name}
 //	@:bid  {build id}
@@ -178,7 +178,7 @@ func DownloadSymbol(w http.ResponseWriter, r *http.Request) {
 }
 
 // ValidateBranch response to check branch api
-//	[:]/api/v1/validate/branch [POST]
+//	[:]/api/branch/check [POST]
 //
 //  @:BODY	{branch infomation}
 //
@@ -213,7 +213,7 @@ func ValidateBranch(w http.ResponseWriter, r *http.Request) {
 }
 
 // ModifyBranch response to modify branch api
-//	[:]/api/v1/branch [POST]
+//	[:]/api/branches/modify [POST]
 //
 //	@:name		{branch name}
 //  @:BODY		{branch infomation}
@@ -245,7 +245,7 @@ func ModifyBranch(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteBranch response to modify branch api
-//	[:]/api/v1/branch/:name [DELETE]
+//	[:]/api/branches/{name} [DELETE]
 //
 //	@:name		{branch name}
 //
@@ -270,7 +270,7 @@ func DeleteBranch(w http.ResponseWriter, r *http.Request) {
 }
 
 // FetchTodayMsg get today symbols update information
-//	[:]/api/v1/messages [GET]
+//	[:]/api/messages [GET]
 //
 //	@ return {
 //		RestResponse

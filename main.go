@@ -19,7 +19,7 @@ func init() {
 	}
 
 	log.New(log.FILE, log.FileConfig{
-		Level:      log.INFO,
+		Level:      log.TRACE,
 		Filename:   filepath.Join(fpath, "app.log"),
 		BufferSize: 2048,
 		FileRotationConfig: log.FileRotationConfig{
@@ -45,6 +45,5 @@ func main() {
 
 	app.Flags = append(app.Flags, []cli.Flag{}...)
 	app.Run(os.Args)
-
 	log.Shutdown()
 }

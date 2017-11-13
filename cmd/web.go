@@ -51,15 +51,16 @@ func runWeb(c *cli.Context) error {
 	wg.Add(3)
 
 	go func() {
+		defer wg.Done()
 		log.Info("[App] Listening %s", serv.Addr)
 		serv.ListenAndServe()
-		wg.Done()
 	}()
 	go func() {
+		defer wg.Done()
 		symbol.GetServer().Run(done)
-		wg.Done()
 	}()
 	go func() {
+		defer wg.Done()
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, os.Interrupt, os.Kill)
 
@@ -67,9 +68,7 @@ func runWeb(c *cli.Context) error {
 		close(done)
 		close(sigs)
 		log.Info("[App] Receive terminate signal!")
-
 		serv.Shutdown(context.Background())
-		wg.Done()
 	}()
 
 	wg.Wait()

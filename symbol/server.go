@@ -36,6 +36,10 @@ func GetServer() *sserver {
 		symSvr = &sserver{
 			builders: make(map[string]Builder, 1),
 		}
+		if st, err := os.Stat(config.Destination); err != nil || st == nil {
+			log.Error(2, "[SS] Access destination %s error: %s.", config.Destination, err)
+			panic("destination isn't accessable")
+		}
 	})
 	return symSvr
 }
@@ -74,14 +78,11 @@ func (ss *sserver) Modify(branch *Branch) Builder {
 	if b, ok := ss.builders[lower]; ok {
 		nb := NewBranch2(branch)
 		if nb.CanUpdate() || nb.CanBrowse() {
-			bb := b.GetBranch()
-			*bb = *nb.GetBranch()
-			/*
-				ob.BuildName = nb.BuildName
-				ob.StoreName = nb.StoreName
-				ob.BuildPath = nb.BuildPath
-				ob.StorePath = nb.StorePath
-			*/
+			b1, b2 := b.GetBranch(), nb.GetBranch()
+			b1.BuildName = b2.BuildName
+			b1.StoreName = b2.StoreName
+			b1.BuildPath = b2.BuildPath
+			b1.StorePath = b2.StorePath
 			return b
 		}
 	}
@@ -158,8 +159,7 @@ func (ss *sserver) LoadBranchs() error {
 	}
 
 	var arr []*Branch
-	dec := json.NewDecoder(fd)
-	if err := dec.Decode(&arr); err != nil {
+	if err := json.NewDecoder(fd).Decode(&arr); err != nil {
 		return err
 	}
 
@@ -168,6 +168,7 @@ func (ss *sserver) LoadBranchs() error {
 
 	for _, b := range arr {
 		ss.builders[strings.ToLower(b.StoreName)] = NewBranch2(b)
+		log.Info("[SS] Load branch %s", b.StoreName)
 	}
 	return nil
 }

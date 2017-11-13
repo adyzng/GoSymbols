@@ -16,7 +16,7 @@ import (
 // IndexHandle for index page
 //
 func IndexHandle(w http.ResponseWriter, r *http.Request) {
-	index := filepath.Join(config.Public, "index.html")
+	index := filepath.Join(config.WebRoot, "index.html")
 	tmpl, err := template.ParseFiles(index)
 	if err == nil {
 		tmpl.Execute(w, nil)
@@ -33,6 +33,7 @@ func StaticHandler(folder string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// if request folder, return not found
 		if strings.TrimRight(r.RequestURI, "/") != r.RequestURI {
+			clog.Warn("[Res] Access (%s) forbidden.", r.RequestURI)
 			http.NotFound(w, r)
 		} else {
 			http.FileServer(http.Dir(folder)).ServeHTTP(w, r)

@@ -4,17 +4,17 @@
 		"storeName": "UDPv6.5U1",
 		"buildPath": "Z:\\UDP_6_5_U1\\Build4175.1-385",
 		"storePath": "C:\\Go\\huan\\src\\github.com\\adyzng\\GoSymbols\\testdata\\UDPv6.5U1",
-		"updateDate": "",
-		"latestBuild": "",
-		"buildsCount": 0
+		"updateDate": "2017-05-27 14:56:52",
+		"latestBuild": "4175.1-385",
+		"buildsCount": 64
 	},
 	{
 		"buildName": "UDP_6_5_U2",
 		"storeName": "UDPv6.5U2",
 		"buildPath": "Z:\\UDP_6_5_U2\\Release",
 		"storePath": "C:\\Go\\huan\\src\\github.com\\adyzng\\GoSymbols\\testdata\\UDPV6.5U2",
-		"updateDate": "2017-11-01 07:27:46",
-		"latestBuild": "4175.2-658",
-		"buildsCount": 11
+		"updateDate": "2017-11-03 19:23:22",
+		"latestBuild": "4175.2-661",
+		"buildsCount": 13
 	}
 ]

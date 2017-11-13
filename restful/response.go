@@ -24,6 +24,8 @@ var (
 	ErrSucceed      = ErrCodeMsg{0, "ok"}
 	ErrInvalidParam = ErrCodeMsg{100, "invalid parameter"}
 	ErrServerInner  = ErrCodeMsg{101, "server inner error"}
+	ErrLoginFailed  = ErrCodeMsg{102, "login failed, please retry"}
+	ErrLoginNeeded  = ErrCodeMsg{103, "login first"}
 
 	ErrInvalidBranch = ErrCodeMsg{200, "branch unavailable"}
 	ErrExistOnLocal  = ErrCodeMsg{201, "branch exist in symbol store"}
