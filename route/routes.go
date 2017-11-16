@@ -17,89 +17,92 @@ type Route struct {
 	Handler http.HandlerFunc
 }
 
-var routes = []Route{
+var resRoutes = []Route{
 	{
 		Name:    "Index",
 		Method:  []string{"GET"},
 		Pattern: "/",
 		Handler: IndexHandle,
 	},
+}
+
+var apiRoutes = []Route{
 	{
 		Name:    "GetBranchList",
 		Method:  []string{"GET"},
-		Pattern: "/api/branches",
+		Pattern: "/branches",
 		Handler: v1.RestBranchList,
 	},
 	{
 		Name:    "GetBuildList",
 		Method:  []string{"GET"},
-		Pattern: "/api/branches/{name}",
+		Pattern: "/branches/{name}",
 		Handler: v1.RestBuildList,
 	},
 	{
 		Name:    "GetSymbolList",
 		Method:  []string{"GET"},
-		Pattern: "/api/branches/{name}/{bid}",
+		Pattern: "/branches/{name}/{bid}",
 		Handler: v1.RestSymbolList,
 	},
 	{
 		Name:    "DownloadSymbol",
 		Method:  []string{"GET"},
-		Pattern: "/api/symbol/{branch}/{hash}/{name}",
+		Pattern: "/symbol/{branch}/{hash}/{name}",
 		Handler: v1.DownloadSymbol,
 	},
 	{
 		Name:    "ModifyBranch",
 		Method:  []string{"POST"},
-		Pattern: "/api/branches/modify",
+		Pattern: "/branches/modify",
 		Handler: v1.ModifyBranch,
 	},
 	{
 		Name:    "ValidateBranch",
 		Method:  []string{"POST"},
-		Pattern: "/api/branches/check",
+		Pattern: "/branches/check",
 		Handler: v1.ValidateBranch,
 	},
 	{
 		Name:    "DeleteBranch",
 		Method:  []string{"DELETE"},
-		Pattern: "/api/branches/{name}",
+		Pattern: "/branches/{name}",
 		Handler: v1.DeleteBranch,
 	},
 	{
 		Name:    "FetchTodayMessage",
 		Method:  []string{"GET"},
-		Pattern: "/api/messages",
+		Pattern: "/messages",
 		Handler: v1.FetchTodayMsg,
 	},
 	{
 		Name:    "Login",
 		Method:  []string{"GET"},
-		Pattern: "/api/auth/login",
+		Pattern: "/auth/login",
 		Handler: v1.AuthLogin,
 	},
 	{
 		Name:    "Authorize",
 		Method:  []string{"POST"},
-		Pattern: "/api/auth/authorize",
+		Pattern: "/auth/authorize",
 		Handler: v1.Authorize,
 	},
 	{
 		Name:    "Logout",
 		Method:  []string{"GET"},
-		Pattern: "/api/auth/logout",
+		Pattern: "/auth/logout",
 		Handler: v1.AuthLogout,
 	},
 	{
 		Name:    "UserProfile",
 		Method:  []string{"GET"},
-		Pattern: "/api/user/profile",
+		Pattern: "/user/profile",
 		Handler: v1.GetUserProfile,
 	},
 	{
 		Name:    "UserPhoto",
 		Method:  []string{"GET"},
-		Pattern: "/api/user/photo",
+		Pattern: "/user/photo",
 		Handler: v1.GetUserPhoto,
 	},
 }
@@ -116,10 +119,20 @@ func NewRouter() *mux.Router {
 		Handler(StaticHandler(config.WebRoot))
 		//Handler(http.StripPrefix("/static/", StaticHandler(config.WebRoot)))
 
-	// predefined handler
-	for _, route := range routes {
+	// normal handler
+	for _, route := range resRoutes {
 		logHandler := LogHandler(route.Handler, route.Name)
 		router.
+			Methods(route.Method...).
+			Path(route.Pattern).
+			Handler(logHandler).
+			Name(route.Name)
+	}
+
+	// restful api handler
+	for _, route := range apiRoutes {
+		logHandler := LogHandler(route.Handler, route.Name)
+		router.PathPrefix("/api/").
 			Methods(route.Method...).
 			Path(route.Pattern).
 			Handler(logHandler).
