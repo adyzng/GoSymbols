@@ -40,6 +40,9 @@
 									</template>
 								</el-table-column>
 							</el-table>
+							<div style="margin-top: 20px">
+								<el-button @click="createBranch()" style="width: 150px;">Create</el-button>
+							</div>
 
 							<el-dialog size="tiny" 
 								ref="frmEditBranch"
@@ -48,7 +51,7 @@
 								:visible.sync="showEditDlg" >
 								<el-form label-position="top" :label-width="frmLabelWidth" :model="editBranch">
 									<el-form-item label="StoreName">
-										<el-input v-model="editBranch.storeName" :disabled="true"></el-input>
+										<el-input v-model="editBranch.storeName" :disabled="!newBranch"></el-input>
 									</el-form-item>
 									<el-form-item label="StorePath">
 										<el-input v-model="editBranch.storePath" auto-complete="off"></el-input>
@@ -98,6 +101,7 @@ export default {
 			frmLabelWidth: "100px",
 			loading: false,
 			maxHeight: 300,
+			newBranch: false,
 			editBranch: {},
 			showCurrRow: {},
 			showEditDlg: false,
@@ -116,7 +120,10 @@ export default {
 			'branchesList',
 		]),
 		editBranchTitle : function() {
-			return `EDIT BRANCH : ${this.editBranch.storeName}`;
+			if (this.newBranch) {
+				return 'CREATE BRANCH'
+			}
+			return `EDIT BRANCH : ${this.editBranch.storeName}`
 		},
 	},
 	methods: {
@@ -131,16 +138,18 @@ export default {
 				buildName: row.buildName,
 				storePath: row.storePath,
 				buildPath: row.buildPath,
-			};
-			this.showEditDlg = !this.showEditDlg;
-			console.log(`start edit branch ${row.storeName}`);
+			}
+			this.newBranch = false
+			this.showEditDlg = !this.showEditDlg
+			console.log(`start edit branch ${row.storeName}`)
 		},
 		evtDlgEditBranch() {
-			let vm = this;
-			let ok = false;
-			vm.loading = true;
-			pdb.modifyBranch(vm.editBranch, (data) => {
-				vm.loading = false;
+			let vm = this
+			let ok = false
+			vm.loading = true
+			pdb.modifyBranch(vm.newBranch, vm.editBranch, (data) => {
+				vm.loading = false
+				let action = vm.newBranch? "Create" : "Modify"
 				let msgBox = {
 					type : "error",
 					title : "",
@@ -149,19 +158,19 @@ export default {
 				}
 				if (data instanceof Error) {
 					msgBox.title = "ERROR";
-					msgBox.message = `Modify branch ${vm.editBranch.storeName} error ${data.response}`;
+					msgBox.message = `${action} branch [${vm.editBranch.storeName}] failed. [${data}]`;
 				} else {
 					if (data.code === 0) {
 						ok = true;
 						msgBox.type = 'info';
 						msgBox.title = "INFO";
-						msgBox.message = `Modify branch ${vm.editBranch.storeName} succeed.`;
+						msgBox.message = `${action} branch ${vm.editBranch.storeName} succeed.`;
 					} else {
 						msgBox.type = 'warning';
 						msgBox.title = "WARNING";
-						msgBox.message = `Modify branch ${vm.editBranch.storeName} failed: ${data.message}.`;
+						msgBox.message = `${action} branch ${vm.editBranch.storeName} failed: ${data.message}.`;
 					}
-					console.log(`modify branch, response: ${JSON.stringify(data)}.`)
+					console.log(`${action} branch, response: ${JSON.stringify(data)}.`)
 				}
 				this.$msgbox(msgBox).then(action => {
 					vm.branchesList.forEach((val) => {
@@ -172,7 +181,7 @@ export default {
 						}
 					});
 					vm.showEditDlg = !ok;
-					console.log(`modify branch action: ${action}`);
+					console.log(`${action} branch action: ${action}`);
 				});
 			});
 		},
@@ -205,6 +214,17 @@ export default {
 					new Error(data.message)
 				console.log(`validate errors: ${vm.errValidates}`);
 			});
+		},
+		createBranch() {
+			this.editBranch = {
+				storeName: "",
+				buildName: "",
+				storePath: "",
+				buildPath: "",
+			}
+			this.newBranch = true
+			this.showEditDlg = !this.showEditDlg
+			console.log(`start create branch ...`)
 		},
 	},
 	mounted() {

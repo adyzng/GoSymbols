@@ -209,11 +209,12 @@ export default {
 		})
 	},
 
-	modifyBranch(branch, cb) {
+	modifyBranch(create, branch, cb) {
 		if (!branch) {
 			return;
 		}
-		return http.post(`/branches/modify`, JSON.stringify(branch)).then(resp => {
+		let uri = !!create ? '/branches/create':'/branches/modify' 
+		return http.post(uri, JSON.stringify(branch)).then(resp => {
 			if (resp.data) {
 				cb && cb(resp.data);
 			}
