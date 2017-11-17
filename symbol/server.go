@@ -99,21 +99,21 @@ func (ss *sserver) Get(storeName string) Builder {
 	return b
 }
 
-// AddBranch if already exist, do nothing.
-func (ss *sserver) Add(buildName, storeName string) Builder {
+// Add Branch if already exist, do nothing.
+func (ss *sserver) Add(b *Branch) Builder {
 	ss.lck.Lock()
 	defer ss.lck.Unlock()
 
 	// exist one
-	if b, ok := ss.builders[storeName]; ok {
+	if b, ok := ss.builders[b.StoreName]; ok {
 		return b
 	}
 
 	// new one
-	b := NewBranch(buildName, storeName)
-	if b.CanBrowse() || b.CanUpdate() {
-		ss.builders[strings.ToLower(storeName)] = b
-		return b
+	br := NewBranch2(b)
+	if br.CanBrowse() || br.CanUpdate() {
+		ss.builders[strings.ToLower(b.StoreName)] = br
+		return br
 	}
 
 	return nil

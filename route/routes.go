@@ -28,6 +28,30 @@ var resRoutes = []Route{
 
 var apiRoutes = []Route{
 	{
+		Name:    "CreateBranch",
+		Method:  []string{"POST"},
+		Pattern: "/branches/create",
+		Handler: v1.CreateBranch,
+	},
+	{
+		Name:    "ModifyBranch",
+		Method:  []string{"POST"},
+		Pattern: "/branches/modify",
+		Handler: v1.ModifyBranch,
+	},
+	{
+		Name:    "ValidateBranch",
+		Method:  []string{"POST"},
+		Pattern: "/branches/check",
+		Handler: v1.ValidateBranch,
+	},
+	{
+		Name:    "DeleteBranch",
+		Method:  []string{"DELETE"},
+		Pattern: "/branches/{name}",
+		Handler: v1.DeleteBranch,
+	},
+	{
 		Name:    "GetBranchList",
 		Method:  []string{"GET"},
 		Pattern: "/branches",
@@ -50,24 +74,6 @@ var apiRoutes = []Route{
 		Method:  []string{"GET"},
 		Pattern: "/symbol/{branch}/{hash}/{name}",
 		Handler: v1.DownloadSymbol,
-	},
-	{
-		Name:    "ModifyBranch",
-		Method:  []string{"POST"},
-		Pattern: "/branches/modify",
-		Handler: v1.ModifyBranch,
-	},
-	{
-		Name:    "ValidateBranch",
-		Method:  []string{"POST"},
-		Pattern: "/branches/check",
-		Handler: v1.ValidateBranch,
-	},
-	{
-		Name:    "DeleteBranch",
-		Method:  []string{"DELETE"},
-		Pattern: "/branches/{name}",
-		Handler: v1.DeleteBranch,
 	},
 	{
 		Name:    "FetchTodayMessage",

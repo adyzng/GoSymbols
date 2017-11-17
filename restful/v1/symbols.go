@@ -215,7 +215,6 @@ func ValidateBranch(w http.ResponseWriter, r *http.Request) {
 // ModifyBranch response to modify branch api
 //	[:]/api/branches/modify [POST]
 //
-//	@:name		{branch name}
 //  @:BODY		{branch infomation}
 //
 //	@ return {
@@ -298,5 +297,52 @@ func FetchTodayMsg(w http.ResponseWriter, r *http.Request) {
 
 	resp.Data = msgs
 	resp.ErrCodeMsg = restful.ErrSucceed
+	resp.WriteJSON(w)
+}
+
+// CreateBranch response to create branch api
+//  [:]/api/branhes/create [POST]
+//
+//  @:BODY		{branch infomation}
+//
+//	@ return {
+//		RestResponse
+//	}
+//
+func CreateBranch(w http.ResponseWriter, r *http.Request) {
+	_, token := loginRequired(r)
+	if token == nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		log.Warn("[Restful] Login required.")
+		return
+	}
+	branch := symbol.Branch{}
+	if err := json.NewDecoder(r.Body).Decode(&branch); err != nil {
+		log.Error(2, "[Restful] Decode request body failed: %v.", err)
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	resp := restful.RestResponse{}
+	br := symbol.GetServer().Add(&branch)
+	if br == nil {
+		log.Warn("[Restful] Create invalid branch %v.", branch)
+		resp.ErrCodeMsg = restful.ErrInvalidBranch
+		resp.WriteJSON(w)
+		return
+	}
+	if !br.CanUpdate() {
+		resp.Message = fmt.Sprintf("path not accessable (%s)", branch.BuildPath)
+	} else {
+		// trigger add new build
+		go br.AddBuild("")
+	}
+	if !br.CanBrowse() {
+		resp.Message = fmt.Sprintf("path not accessable (%s)", branch.StorePath)
+	}
+	log.Info("[Restful] User %s create branch %s.", token.UserName, br.Name())
+
+	if err := symbol.GetServer().SaveBranchs(""); err != nil {
+		log.Warn("[Restful] Save branch (%v) failed: %v.", branch, err)
+	}
 	resp.WriteJSON(w)
 }
