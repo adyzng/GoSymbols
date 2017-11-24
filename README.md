@@ -2,8 +2,11 @@
 
 Windows PDB self-service symbol server by Golang and Vuejs.
 
+Index Page
 ![Index](/web/static/1.png?raw=true "Index")
-![Download](/web/static/1.png?raw=true "Download PDB")
+
+Symbols Page
+![Download](/web/static/2.png?raw=true "Download PDB")
 
 
 ## Config
