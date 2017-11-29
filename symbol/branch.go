@@ -31,6 +31,10 @@ const (
 )
 
 var (
+	symPrefixs = []string{"\\D2D", "\\Central", "\\ExternalLib"}
+)
+
+var (
 	ErrBuildNotExist       = fmt.Errorf("build not exist")
 	ErrBranchNotInit       = fmt.Errorf("branch not initialized")
 	ErrBranchOnSymbolStore = fmt.Errorf("invalid branch on symbol store")
@@ -565,6 +569,15 @@ func (b *BrBuilder) ParseSymbols(buildID string, handler func(sym *Symbol) error
 		spath := strings.Trim(ss[1], "\"")
 		if idx := strings.Index(spath, unzipDir); idx != -1 {
 			spath = spath[idx+len(unzipDir):]
+		} else {
+			for _, prefix := range symPrefixs {
+				if idx = strings.Index(spath, prefix); idx != -1 {
+					break
+				}
+			}
+			if idx != -1 {
+				spath = spath[idx:]
+			}
 		}
 
 		sym := &Symbol{
@@ -574,6 +587,8 @@ func (b *BrBuilder) ParseSymbols(buildID string, handler func(sym *Symbol) error
 			Arch:    archDetect(spath),
 			Version: build.Version,
 		}
+		// download url: /api/symbol/{branch}/{hash}/{name}
+		sym.URL = fmt.Sprintf("/api/symbol/%s/%s/%s", b.StoreName, sym.Hash, sym.Name)
 		if err = handler(sym); err != nil {
 			return total, err
 		}

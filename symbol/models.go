@@ -29,6 +29,7 @@ type Symbol struct {
 	Hash    string `json:"hash"`
 	Name    string `json:"name"`
 	Path    string `json:"path"`
+	URL     string `json:"url"`
 	Version string `json:"version"`
 }
 
